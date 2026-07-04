@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IMS Gujarat — Test Analysis Report Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --navy-0:#080d24;
+    --navy-1:#0c1330;
+    --navy-2:#121c42;
+    --card:#131b3c;
+    --card-border:rgba(255,255,255,.08);
+    --gold:#e8c073;
+    --gold-soft:#f4dca0;
+    --text:#f3f5fb;
+    --dim:#96a0c4;
+    --dim2:#6c7699;
+    --green:#3fc98a;
+    --green-bg:rgba(63,201,138,.14);
+    --amber:#e8b23d;
+    --amber-bg:rgba(232,178,61,.14);
+    --red:#e0637a;
+    --red-bg:rgba(224,99,122,.14);
+    --blue:#5b7fe6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'IBM Plex Sans',sans-serif;
+    background:#1b2340;
+    color:var(--text);
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* ---------- SETUP VIEW ---------- */
+  #setup-view{
+    max-width:900px;
+    margin:0 auto;
+    padding:36px 24px 80px;
+  }
+  #setup-view h1{
+    font-size:26px;
+    margin:0 0 4px;
+  }
+  #setup-view .sub{
+    color:var(--dim);
+    margin:0 0 28px;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:14px;
+    padding:22px 24px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--gold);
+    margin:0 0 16px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2::before{
+    content:"";
+    width:6px;height:6px;border-radius:50%;
+    background:var(--gold);
+    display:inline-block;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--dim);
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=number], textarea{
+    width:100%;
+    background:var(--navy-1);
+    border:1px solid var(--card-border);
+    border-radius:8px;
+    color:var(--text);
+    padding:10px 12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+  }
+  textarea{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    min-height:130px;
+    resize:vertical;
+    white-space:pre;
+  }
+  .field{margin-bottom:14px;}
+  .hint{font-size:11px;color:var(--dim2);margin-top:5px;line-height:1.5;}
+  .btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:12px 22px;
+    border-radius:9px;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--gold-soft),var(--gold));
+    color:#231705;
+  }
+  .btn-secondary{
+    background:transparent;
+    border:1px solid var(--card-border);
+    color:var(--text);
+  }
+  #generate-error{
+    color:var(--red);
+    font-size:13px;
+    margin-top:12px;
+    display:none;
+  }
+  .actions-row{display:flex;gap:12px;justify-content:flex-end;margin-top:6px;}
+
+  /* ---------- REPORT VIEW ---------- */
+  #report-view{display:none;}
+  #toolbar{
+    max-width:760px;margin:0 auto;padding:14px 24px 0;
+    display:flex;justify-content:space-between;gap:10px;
+  }
+  #report-page{
+    max-width:760px;
+    margin:0 auto;
+    padding:24px 24px 60px;
+    background:linear-gradient(180deg,var(--navy-1) 0%, var(--navy-2) 100%);
+  }
+  .r-header{padding:6px 4px 26px;position:relative;}
+  .r-header-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-badge{
+    width:34px;height:34px;border-radius:50%;
+    border:1.5px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;color:var(--gold);
+  }
+  .brand-name{font-weight:700;font-size:16px;}
+  .brand-sub{font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;}
+  .header-right{text-align:right;}
+  .header-right .eyebrow{font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;}
+  .header-right .kicker{font-size:12px;color:var(--gold-soft);font-weight:700;}
+  .eyebrow-tag{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);
+    font-weight:700;margin:22px 0 6px;
+  }
+  .r-title{font-size:38px;font-weight:800;margin:0 0 6px;line-height:1.05;}
+  .r-subtitle{color:var(--dim);font-size:14px;margin:0 0 16px;}
+  .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .pill{
+    padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;
+  }
+  .pill-batch{background:rgba(232,192,115,.14);color:var(--gold-soft);border:1px solid rgba(232,192,115,.3);}
+  .pill-meta{background:rgba(255,255,255,.06);color:var(--dim);}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0;}
+  .stat-card{
+    background:var(--card);border:1px solid var(--card-border);border-radius:12px;
+    padding:16px 14px;
+  }
+  .stat-num{font-size:26px;font-weight:800;line-height:1;}
+  .stat-num small{font-size:13px;font-weight:600;color:var(--dim);}
+  .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-top:8px;}
+  .stat-sub{font-size:10px;color:var(--dim2);margin-top:2px;}
+
+  .two-col{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin-bottom:14px;}
+  .section-card{
+    background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:18px;
+  }
+  .section-card h3{
+    font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);
+    margin:0 0 14px;display:flex;align-items:center;gap:7px;
+  }
+  .section-card h3::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);}
+  .section-card h3 .side-note{
+    margin-left:auto;font-size:9px;color:var(--dim2);text-transform:none;letter-spacing:0;font-weight:400;
+  }
+
+  .dist-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .dist-label{width:46px;font-size:11px;color:var(--dim);text-align:right;flex-shrink:0;}
+  .dist-track{flex:1;background:rgba(255,255,255,.05);border-radius:5px;height:14px;overflow:hidden;}
+  .dist-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#4667c9,var(--blue));}
+  .dist-fill.top{background:linear-gradient(90deg,var(--gold),var(--gold-soft));}
+  .dist-count{width:24px;font-size:12px;font-weight:700;text-align:right;flex-shrink:0;}
+
+  table.batch-table{width:100%;border-collapse:collapse;font-size:12px;}
+  table.batch-table th{
+    text-align:left;color:var(--dim2);font-weight:600;font-size:9px;text-transform:uppercase;
+    letter-spacing:.05em;padding-bottom:8px;border-bottom:1px solid var(--card-border);
+  }
+  table.batch-table td{padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.04);}
+  table.batch-table td.batch-name{font-weight:700;}
+  table.batch-table td.avg{color:var(--gold-soft);font-weight:700;}
+
+  .qmap-legend{display:flex;gap:16px;justify-content:center;margin-top:14px;font-size:10px;color:var(--dim);}
+  .qmap-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+  .qgrid{display:grid;grid-template-columns:repeat(11,1fr);gap:6px;}
+  .qcell{
+    border-radius:8px;padding:8px 4px;text-align:center;
+  }
+  .qcell .qn{font-size:9px;font-weight:700;opacity:.75;}
+  .qcell .qp{font-size:14px;font-weight:800;margin-top:2px;}
+  .qcell.acc{background:var(--green-bg);color:var(--green);}
+  .qcell.mod{background:var(--amber-bg);color:var(--amber);}
+  .qcell.kill{background:var(--red-bg);color:var(--red);}
+
+  .honours-wrap{
+    border:1px solid rgba(232,192,115,.25);border-radius:16px;padding:22px;margin-top:14px;
+    background:radial-gradient(circle at 50% 0%,rgba(232,192,115,.06),transparent 60%);
+  }
+  .honours-head{text-align:center;margin-bottom:18px;}
+  .honours-head .eyebrow{font-size:9px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;}
+  .honours-head h2{font-size:22px;margin:4px 0 4px;letter-spacing:.02em;}
+  .honours-head p{font-size:11px;color:var(--dim);margin:0;}
+  .hero-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px;}
+  .hero-card{
+    background:linear-gradient(160deg,var(--gold-soft),var(--gold));
+    border-radius:12px;padding:18px;text-align:center;color:#241a06;
+  }
+  .hero-card .star{font-size:16px;}
+  .hero-card .name{font-weight:800;font-size:15px;margin:4px 0 2px;}
+  .hero-card .meta{font-size:10px;opacity:.75;margin-bottom:8px;}
+  .hero-card .score{font-size:26px;font-weight:800;}
+  .hero-card .score small{font-size:13px;font-weight:600;}
+
+  .honour-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .honour-item{
+    display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);
+    border:1px solid var(--card-border);border-radius:10px;padding:9px 12px;
+  }
+  .rank-badge{
+    width:20px;height:20px;border-radius:5px;background:rgba(232,192,115,.16);color:var(--gold);
+    font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .honour-item .h-name{font-weight:700;font-size:12.5px;flex:1;}
+  .honour-item .h-batch{font-size:9px;color:var(--dim2);}
+  .honour-item .h-score{font-weight:800;color:var(--gold-soft);font-size:14px;}
+
+  .r-footer{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    margin-top:26px;padding-top:18px;border-top:1px solid var(--card-border);
+    font-size:11px;color:var(--dim);gap:20px;
+  }
+  .r-footer .insight strong{color:var(--gold-soft);}
+  .r-footer .brand-mini{text-align:right;flex-shrink:0;}
+  .r-footer .brand-mini .n{font-weight:700;color:var(--text);font-size:12px;}
+  .r-footer .brand-mini .t{font-size:8px;letter-spacing:.1em;text-transform:uppercase;}
+
+  .mode-tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .mode-tab{
+    background:transparent;border:1px solid var(--card-border);color:var(--dim);
+    padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:600;
+  }
+  .mode-tab.active{background:rgba(232,192,115,.14);border-color:rgba(232,192,115,.35);color:var(--gold-soft);}
+  .fetch-status{font-size:11px;margin-top:6px;display:none;}
+  .fetch-status.ok{color:var(--green);display:block;}
+  .fetch-status.err{color:var(--red);display:block;}
+  .fetch-status.loading{color:var(--dim);display:block;}
+
+  @media print{
+    body{background:#fff;}
+    #toolbar{display:none;}
+    #report-page{padding:0;max-width:100%;}
+  }
+  @media (max-width:640px){
+    .grid2,.grid3{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .two-col{grid-template-columns:1fr;}
+    .qgrid{grid-template-columns:repeat(4,1fr);}
+    .honour-list{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP VIEW ================= -->
+<div id="setup-view">
+  <h1>Test Analysis Report Generator</h1>
+  <p class="sub">Either paste your Form Responses and Answer Key as CSV, or point the tool at a published Google Sheet link so it fetches the live data instead — pick whichever mode suits each section below.</p>
+
+  <div class="panel">
+    <h2>Test Details</h2>
+    <div class="grid2">
+      <div class="field"><label>Test Title</label><input type="text" id="f-title" placeholder="Class Test 2"></div>
+      <div class="field"><label>Subject / Topic Tag</label><input type="text" id="f-subject" placeholder="Geometry"></div>
+      <div class="field"><label>Total Marks (leave blank to auto-read from Score column)</label><input type="number" id="f-totalmarks" placeholder="66"></div>
+      <div class="field"><label>Duration &amp; Marking Scheme</label><input type="text" id="f-scheme" placeholder="40 min · +3 / −1"></div>
+      <div class="field"><label>Honours Board Threshold (min score to qualify)</label><input type="number" id="f-threshold" placeholder="25"></div>
+      <div class="field"><label>Report label (top right, e.g. Class Test · 02)</label><input type="text" id="f-label" placeholder="Class Test · 02"></div>
+    </div>
+    <div class="field">
+      <label>Closing insight line (optional — shown in footer)</label>
+      <input type="text" id="f-footer" placeholder="A tough diagnostic by design. Review solutions and target the red-zone questions.">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Form Responses</h2>
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab active" id="tab-responses-paste" onclick="setMode('responses','paste')">Paste CSV</button>
+      <button type="button" class="mode-tab" id="tab-responses-url" onclick="setMode('responses','url')">Fetch from Sheet URL</button>
+    </div>
+    <div class="field" id="responses-paste-field">
+      <textarea id="f-responses" placeholder="Timestamp,Score,Name,Batch,Question 1,Question 2,...,Attempts,Correct,Incorrect,Accuracy
+4/22/2026 7:59,12 / 75,Abhishek,2624,c,c,d,...,15,4,11,26.6"></textarea>
+      <div class="hint">Paste the full "Form Responses" sheet as CSV (with header row). Question columns must be named "Question 1", "Question 2" etc. "Score" as "12 / 75" is parsed automatically; Attempts/Correct/Incorrect/Accuracy columns are used if present.</div>
+    </div>
+    <div class="field" id="responses-url-field" style="display:none;">
+      <input type="text" id="f-responses-url" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv">
+      <div class="hint">In the response Sheet: File → Share → Publish to web → select the "Form Responses 1" tab → format CSV → Publish. Paste that link here. Re-generating the report always pulls the latest submissions.</div>
+      <div class="fetch-status" id="responses-fetch-status"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Answer Key</h2>
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab active" id="tab-answerkey-paste" onclick="setMode('answerkey','paste')">Paste CSV</button>
+      <button type="button" class="mode-tab" id="tab-answerkey-url" onclick="setMode('answerkey','url')">Fetch from Sheet URL</button>
+    </div>
+    <div class="field" id="answerkey-paste-field">
+      <textarea id="f-answerkey" placeholder="Question No,Correct Answer,Points,Question Text
+1,C,3,
+2,B,3,
+3,A,D,3,"></textarea>
+      <div class="hint">First column = question number, second column = correct letter(s) or value (comma-separated if more than one is accepted).</div>
+    </div>
+    <div class="field" id="answerkey-url-field" style="display:none;">
+      <input type="text" id="f-answerkey-url" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=123&single=true&output=csv">
+      <div class="hint">Same as above, but publish the "AnswerKey" tab instead. Once published, any edits to the key sheet reflect automatically next time you generate.</div>
+      <div class="fetch-status" id="answerkey-fetch-status"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Score Bands (optional)</h2>
+    <div class="field">
+      <input type="text" id="f-bands" placeholder="31,21,11,1">
+      <div class="hint">Comma-separated lower bounds, highest band first — e.g. "31,21,11,1" creates bands 31+, 21–30, 11–20, 1–10, and ≤0 (if any score is 0 or below). Leave blank to auto-generate 5 even bands from total marks.</div>
+    </div>
+  </div>
+
+  <div id="generate-error"></div>
+  <div class="actions-row">
+    <button class="btn btn-primary" onclick="generateReport()">Generate Report →</button>
+  </div>
+</div>
+
+<!-- ================= REPORT VIEW ================= -->
+<div id="report-view">
+  <div id="toolbar">
+    <button class="btn btn-secondary" onclick="backToSetup()">← Edit / New Report</button>
+    <button class="btn btn-primary" onclick="downloadPDF()">Download PDF</button>
+  </div>
+  <div id="report-page"></div>
+</div>
+
+<script>
+let lastReportMeta = {};
+const modeState = { responses: 'paste', answerkey: 'paste' };
+
+function setMode(section, mode){
+  modeState[section] = mode;
+  document.getElementById(`tab-${section}-paste`).classList.toggle('active', mode==='paste');
+  document.getElementById(`tab-${section}-url`).classList.toggle('active', mode==='url');
+  document.getElementById(`${section}-paste-field`).style.display = mode==='paste' ? 'block' : 'none';
+  document.getElementById(`${section}-url-field`).style.display = mode==='url' ? 'block' : 'none';
+}
+
+/** Normalizes common Google Sheets share/edit links into a published CSV export URL where possible,
+ *  and passes through already-published CSV links unchanged. */
+function normalizeSheetUrl(url){
+  url = url.trim();
+  // Already a published CSV link (pubhtml/pub?output=csv) or gviz CSV export — use as-is.
+  if(/output=csv/i.test(url) || /\/pub\?/i.test(url)) return url;
+  // A plain edit link like .../spreadsheets/d/<id>/edit#gid=123 — convert to gviz CSV export.
+  const m = url.match(/\/spreadsheets\/d\/([-\w]+)/);
+  if(m){
+    const id = m[1];
+    const gidMatch = url.match(/gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : '0';
+    return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  }
+  return url;
+}
+
+async function fetchCSVFromUrl(rawUrl, statusElId){
+  const statusEl = document.getElementById(statusElId);
+  const url = normalizeSheetUrl(rawUrl);
+  statusEl.className = 'fetch-status loading';
+  statusEl.textContent = 'Fetching latest data…';
+  try{
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('Server returned ' + res.status + '. Make sure the sheet/tab is published to the web.');
+    const text = await res.text();
+    if(/^\s*<(!DOCTYPE|html)/i.test(text)) throw new Error('Got an HTML page instead of CSV — check the sheet is published with format = CSV, and the link is the published link (not just a shareable edit link).');
+    statusEl.className = 'fetch-status ok';
+    statusEl.textContent = 'Fetched ' + (text.split('\n').length - 1) + ' rows just now.';
+    return text;
+  } catch(e){
+    statusEl.className = 'fetch-status err';
+    statusEl.textContent = 'Could not fetch: ' + e.message;
+    throw e;
+  }
+}
+
+function backToSetup(){
+  document.getElementById('report-view').style.display = 'none';
+  document.getElementById('setup-view').style.display = 'block';
+}
+
+function parseCSVText(text){
+  const res = Papa.parse(text.trim(), {header:true, skipEmptyLines:true, dynamicTyping:false});
+  return res.data.map(row=>{
+    const clean = {};
+    Object.keys(row).forEach(k=>{ clean[k.trim()] = (row[k]===undefined||row[k]===null)?'':String(row[k]).trim(); });
+    return clean;
+  });
+}
+
+function median(arr){
+  const s=[...arr].sort((a,b)=>a-b);
+  const mid=Math.floor(s.length/2);
+  return s.length%2!==0 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+
+function letterSet(str){
+  return String(str||'').toUpperCase().split(/[,\/]/).map(s=>s.trim()).filter(Boolean);
+}
+
+async function generateReport(){
+  const errBox = document.getElementById('generate-error');
+  errBox.style.display='none';
+  try{
+    let responsesRaw, keyRaw;
+
+    if(modeState.responses === 'url'){
+      const url = document.getElementById('f-responses-url').value;
+      if(!url.trim()) throw new Error('Paste the published Sheet URL for Form Responses first.');
+      responsesRaw = await fetchCSVFromUrl(url, 'responses-fetch-status');
+    } else {
+      responsesRaw = document.getElementById('f-responses').value;
+      if(!responsesRaw.trim()) throw new Error('Paste the Form Responses CSV first.');
+    }
+
+    if(modeState.answerkey === 'url'){
+      const url = document.getElementById('f-answerkey-url').value;
+      if(!url.trim()) throw new Error('Paste the published Sheet URL for the Answer Key first.');
+      keyRaw = await fetchCSVFromUrl(url, 'answerkey-fetch-status');
+    } else {
+      keyRaw = document.getElementById('f-answerkey').value;
+      if(!keyRaw.trim()) throw new Error('Paste the Answer Key CSV first.');
+    }
+
+    const respRows = parseCSVText(responsesRaw);
+    const keyRows = parseCSVText(keyRaw);
+    if(respRows.length===0) throw new Error('No response rows found — check the CSV.');
+
+    // detect question columns
+    const allCols = Object.keys(respRows[0]);
+    const qCols = allCols
+      .filter(c=>/^question\s*\d+$/i.test(c))
+      .sort((a,b)=> parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+    if(qCols.length===0) throw new Error('No "Question 1", "Question 2"... columns found in Responses CSV.');
+
+    // build answer key map: qNumber -> Set of correct letters
+    const keyCols = Object.keys(keyRows[0]||{});
+    const qNumKey = keyCols.find(c=>/question/i.test(c) && /(no|number|num|#)?$/i.test(c)) || keyCols[0];
+    const ansKey = keyCols.find(c=>/answer|correct|key/i.test(c)) || keyCols[1];
+    const answerMap = {};
+    keyRows.forEach(r=>{
+      const qn = parseInt(String(r[qNumKey]).replace(/\D/g,''));
+      if(!isNaN(qn)) answerMap[qn] = letterSet(r[ansKey]);
+    });
+
+    // parse student records
+    const scoreCol = allCols.find(c=>/^score$/i.test(c)) || 'Score';
+    const nameCol = allCols.find(c=>/^name$/i.test(c)) || 'Name';
+    const batchCol = allCols.find(c=>/^batch$/i.test(c)) || 'Batch';
+    const attemptsCol = allCols.find(c=>/^attempts$/i.test(c));
+    const correctCol = allCols.find(c=>/^correct$/i.test(c));
+
+    let autoTotalMarks = null;
+    const students = respRows.map(r=>{
+      const rawScore = r[scoreCol]||'';
+      const m = rawScore.match(/(-?\d+(?:\.\d+)?)\s*(?:\/\s*(\d+(?:\.\d+)?))?/);
+      const score = m ? parseFloat(m[1]) : NaN;
+      if(m && m[2] && autoTotalMarks===null) autoTotalMarks = parseFloat(m[2]);
+      const answers = {};
+      qCols.forEach(c=>{
+        const qn = parseInt(c.match(/\d+/)[0]);
+        answers[qn] = r[c]||'';
+      });
+      return {
+        name: (r[nameCol]||'Unnamed').trim(),
+        batch: (r[batchCol]||'—').trim(),
+        score,
+        answers,
+        attempts: attemptsCol ? parseFloat(r[attemptsCol])||0 : null,
+        correctCount: correctCol ? parseFloat(r[correctCol])||0 : null
+      };
+    }).filter(s=>!isNaN(s.score));
+
+    if(students.length===0) throw new Error('Could not parse any valid Score values from the Responses CSV.');
+
+    const totalMarks = parseFloat(document.getElementById('f-totalmarks').value) || autoTotalMarks || Math.max(...students.map(s=>s.score));
+    const totalQuestions = qCols.length;
+
+    // fill in correctCount/attempts if not provided, using answer key
+    students.forEach(s=>{
+      if(s.correctCount===null || s.attempts===null){
+        let attempted=0, correct=0;
+        qCols.forEach(c=>{
+          const qn = parseInt(c.match(/\d+/)[0]);
+          const given = String(s.answers[qn]||'').trim();
+          if(given!==''){
+            attempted++;
+            const keySet = answerMap[qn]||[];
+            if(keySet.length && keySet.includes(given.toUpperCase())) correct++;
+          }
+        });
+        if(s.attempts===null) s.attempts = attempted;
+        if(s.correctCount===null) s.correctCount = correct;
+      }
+    });
+
+    const scores = students.map(s=>s.score);
+    const avg = scores.reduce((a,b)=>a+b,0)/scores.length;
+    const med = median(scores);
+    const highest = Math.max(...scores);
+    const threshold = parseFloat(document.getElementById('f-threshold').value);
+    const effectiveThreshold = isNaN(threshold) ? highest : threshold;
+    const honoursCount = scores.filter(s=>s>=effectiveThreshold).length;
+
+    // batches
+    const batchMap = {};
+    students.forEach(s=>{
+      if(!batchMap[s.batch]) batchMap[s.batch] = [];
+      batchMap[s.batch].push(s.score);
+    });
+    const batchStats = Object.keys(batchMap).sort().map(b=>{
+      const arr = batchMap[b];
+      return { batch:b, n:arr.length, avg: arr.reduce((a,c)=>a+c,0)/arr.length, top: Math.max(...arr) };
+    }).sort((a,b)=>b.n-a.n);
+
+    // score distribution bands
+    const bandsInput = document.getElementById('f-bands').value.trim();
+    let bandEdges;
+    if(bandsInput){
+      bandEdges = bandsInput.split(',').map(x=>parseFloat(x.trim())).filter(x=>!isNaN(x)).sort((a,b)=>b-a);
+    } else {
+      const step = Math.ceil(totalMarks/5) || 1;
+      bandEdges = [4*step+1, 3*step+1, 2*step+1, step+1, 1];
+    }
+    const hasNonPositive = scores.some(s=>s<=0);
+    const bands = bandEdges.map((edge,i)=>{
+      const upper = i===0 ? null : bandEdges[i-1]-1;
+      const label = i===0 ? (edge+'+') : (edge+'–'+upper);
+      const count = scores.filter(s=> i===0 ? s>=edge : (s>=edge && s<=upper)).length;
+      return {label, count};
+    });
+    if(hasNonPositive){
+      bands.push({label:'≤0', count: scores.filter(s=>s<=0).length});
+    }
+    const maxBandCount = Math.max(...bands.map(b=>b.count), 1);
+
+    // question difficulty
+    const qDiff = qCols.map(c=>{
+      const qn = parseInt(c.match(/\d+/)[0]);
+      const keySet = answerMap[qn]||[];
+      let correctN = 0;
+      students.forEach(s=>{
+        const given = String(s.answers[qn]||'').trim().toUpperCase();
+        if(given && keySet.includes(given)) correctN++;
+      });
+      const pct = students.length ? Math.round((correctN/students.length)*100) : 0;
+      let cat = pct>=40 ? 'acc' : (pct>=20 ? 'mod' : 'kill');
+      return {qn, pct, cat};
+    });
+
+    // honours board
+    const honourStudents = students
+      .filter(s=>s.score>=effectiveThreshold)
+      .sort((a,b)=> b.score-a.score || a.name.localeCompare(b.name));
+    const heroScore = honourStudents.length ? honourStudents[0].score : null;
+    const heroStudents = honourStudents.filter(s=>s.score===heroScore).slice(0,4);
+    const listStudents = honourStudents.slice(heroStudents.length);
+
+    const meta = {
+      title: document.getElementById('f-title').value || 'Test Report',
+      subject: document.getElementById('f-subject').value || '',
+      label: document.getElementById('f-label').value || 'Performance Report',
+      scheme: document.getElementById('f-scheme').value || '',
+      footer: document.getElementById('f-footer').value || 'Review solutions and target the red-zone questions for the next attempt.',
+      batches: Object.keys(batchMap).sort()
+    };
+    lastReportMeta = meta;
+
+    renderReport({
+      meta, students, totalMarks, totalQuestions,
+      avg, med, highest, honoursCount, effectiveThreshold,
+      batchStats, bands, maxBandCount, qDiff,
+      heroStudents, listStudents
+    });
+
+    document.getElementById('setup-view').style.display='none';
+    document.getElementById('report-view').style.display='block';
+    window.scrollTo(0,0);
+
+  } catch(e){
+    errBox.textContent = 'Could not generate report: ' + e.message;
+    errBox.style.display='block';
+  }
+}
+
+function renderReport(d){
+  const fmt1 = n => Math.round(n*10)/10;
+  const batchPills = d.meta.batches.map(b=>`<span class="pill pill-batch">Batch ${b}</span>`).join('');
+
+  const distHTML = d.bands.map(b=>{
+    const w = Math.max((b.count/d.maxBandCount)*100, b.count>0?4:0);
+    const isTop = b === d.bands[0];
+    return `<div class="dist-row">
+      <div class="dist-label">${b.label}</div>
+      <div class="dist-track"><div class="dist-fill ${isTop?'top':''}" style="width:${w}%"></div></div>
+      <div class="dist-count">${b.count}</div>
+    </div>`;
+  }).join('');
+
+  const batchRows = d.batchStats.map(b=>`
+    <tr>
+      <td class="batch-name">${b.batch}</td>
+      <td>${b.n}</td>
+      <td class="avg">${fmt1(b.avg)}</td>
+      <td>${b.top}</td>
+    </tr>`).join('');
+
+  const qCells = d.qDiff.map(q=>`
+    <div class="qcell ${q.cat}">
+      <div class="qn">Q${q.qn}</div>
+      <div class="qp">${q.pct}%</div>
+    </div>`).join('');
+
+  const heroCards = d.heroStudents.map(s=>`
+    <div class="hero-card">
+      <div class="star">★</div>
+      <div class="name">${s.name}</div>
+      <div class="meta">Batch ${s.batch} · ${s.correctCount}/${d.totalQuestions} correct</div>
+      <div class="score">${s.score}<small>/${d.totalMarks}</small></div>
+    </div>`).join('');
+
+  const listItems = d.listStudents.map((s,i)=>`
+    <div class="honour-item">
+      <div class="rank-badge">${i+1+d.heroStudents.length}</div>
+      <div style="flex:1">
+        <div class="h-name">${s.name} <span class="h-batch">B${s.batch}</span></div>
+      </div>
+      <div class="h-score">${s.score}</div>
+    </div>`).join('');
+
+  const html = `
+    <div class="r-header">
+      <div class="r-header-top">
+        <div class="brand">
+          <div class="brand-badge">IMS</div>
+          <div><div class="brand-name">IMS Gujarat</div><div class="brand-sub">Trusted for Success</div></div>
+        </div>
+        <div class="header-right">
+          <div class="eyebrow">${d.meta.label}</div>
+        </div>
+      </div>
+      <div class="eyebrow-tag">${d.meta.subject}</div>
+      <h1 class="r-title">${d.meta.title}</h1>
+      <p class="r-subtitle">Results &amp; Question-wise Analysis</p>
+      <div class="pill-row">
+        ${batchPills}
+        <span class="pill pill-meta">${d.students.length} students</span>
+        <span class="pill pill-meta">${d.totalMarks} marks</span>
+      </div>
+      ${d.meta.scheme?`<div class="pill-row"><span class="pill pill-meta">${d.meta.scheme}</span></div>`:''}
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${d.students.length}</div><div class="stat-label">Students Appeared</div><div class="stat-sub">across ${d.batchStats.length} batch${d.batchStats.length>1?'es':''}</div></div>
+      <div class="stat-card"><div class="stat-num">${fmt1(d.avg)}<small>/${d.totalMarks}</small></div><div class="stat-label">Class Average</div><div class="stat-sub">median ${fmt1(d.med)}</div></div>
+      <div class="stat-card"><div class="stat-num">${d.highest}<small>/${d.totalMarks}</small></div><div class="stat-label">Highest Score</div><div class="stat-sub">${d.heroStudents.length} co-topper${d.heroStudents.length>1?'s':''}</div></div>
+      <div class="stat-card"><div class="stat-num">${d.honoursCount}</div><div class="stat-label">On the Honours Board</div><div class="stat-sub">scored ${d.effectiveThreshold}+ </div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="section-card">
+        <h3>Score Distribution</h3>
+        ${distHTML}
+      </div>
+      <div class="section-card">
+        <h3>Batch-wise</h3>
+        <table class="batch-table">
+          <thead><tr><th>Batch</th><th>N</th><th>Avg</th><th>Top</th></tr></thead>
+          <tbody>${batchRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-bottom:14px;">
+      <h3>Question Difficulty Map <span class="side-note">% of the whole batch that answered correctly</span></h3>
+      <div class="qgrid">${qCells}</div>
+      <div class="qmap-legend">
+        <span><span class="dot" style="background:var(--green)"></span>Accessible (≥40%)</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Moderate (20–39%)</span>
+        <span><span class="dot" style="background:var(--red)"></span>Killer (&lt;20%)</span>
+      </div>
+    </div>
+
+    <div class="honours-wrap">
+      <div class="honours-head">
+        <div class="eyebrow">Hall of</div>
+        <h2>HONOURS BOARD</h2>
+        <p>Students who scored ${d.effectiveThreshold}&amp; above</p>
+      </div>
+      <div class="hero-grid">${heroCards || '<p style="text-align:center;color:var(--dim);font-size:12px;">No students crossed the honours threshold.</p>'}</div>
+      <div class="honour-list">${listItems}</div>
+    </div>
+
+    <div class="r-footer">
+      <div class="insight">${d.meta.footer}</div>
+      <div class="brand-mini"><div class="n">IMS Gujarat</div><div class="t">Trusted for Success</div></div>
+    </div>
+  `;
+  document.getElementById('report-page').innerHTML = html;
+}
+
+function downloadPDF(){
+  const el = document.getElementById('report-page');
+  const filename = (lastReportMeta.title || 'test-report').replace(/[^a-z0-9]+/gi,'_') + '.pdf';
+  html2pdf().set({
+    margin: 0,
+    filename,
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, backgroundColor:'#111c42' },
+    jsPDF: { unit:'pt', format:'a4', orientation:'portrait' },
+    pagebreak: { mode: ['avoid-all','css','legacy'] }
+  }).from(el).save();
+}
+</script>
+</body>
+</html>
